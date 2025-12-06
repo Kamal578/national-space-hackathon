@@ -57,7 +57,7 @@ Endpoints
   ```json
   { "bbox": [44.0, 38.5, 51.5, 42.0] }
   ```
-- `POST /hazards/compute` – main endpoint the frontend uses (same shape also available at `/hazard-features`)  
+- `POST /hazards/compute` (alias `/compute`, legacy `/hazard-features`) – main endpoint the frontend uses  
   Body:
   ```json
   {
@@ -90,6 +90,26 @@ Endpoints
 - `POST /hazards/raw` – returns daily time series from NASA POWER, CHIRPS, and raw FIRMS rows for the provided location and date window.
 
 OpenAPI docs are served automatically at `/docs` and `/redoc`.
+
+Request/Response Shapes
+-----------------------
+- Location payload: one of `bbox` (`[west, south, east, north]` in lon/lat), `point` (`[lat, lon]`), or `polygon` (`[[lon, lat]...]`). Backend normalizes to centroid + bbox.
+- Dates: `start`, `end` must be ISO `YYYY-MM-DD`; future dates should be rejected by clients.
+- Fires: `firms_days` controls lookback window for FIRMS fetch (days back from today).
+- Response units live under `units` and mirror field names (e.g., `climate.t2m_mean = degC`, `drought.chirps_precip_mean = mm/day`, `fire.fires_count = count`).
+
+Error Handling
+--------------
+- Empty data ranges (e.g., no CHIRPS images) return zeroed metrics instead of Earth Engine errors.
+- Validation errors return 400 with messages (e.g., invalid bbox, date order).
+- Server errors (e.g., missing credentials) return 500 with a descriptive message.
+
+Data Flow & Sources
+-------------------
+- Climate: NASA POWER point query (T2M, PRECTOT/PRECTOTCORR, WS10M).
+- Drought: CHIRPS daily rainfall via Earth Engine (point sampling).
+- Fire: NASA FIRMS API via bbox and `firms_days`.
+- Units map lives in `utils.fetch_hazard_data.FEATURE_UNITS`; `dataframe_to_timeseries` converts pandas frames to JSON for `/hazards/raw`.
 
 Local Script Usage
 ------------------
