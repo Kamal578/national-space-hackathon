@@ -1,0 +1,1 @@
+Key from Google Cloud Platform for Earth Engine authentication should be placed in this directory.
