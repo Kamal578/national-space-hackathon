@@ -8,6 +8,9 @@ import requests
 import pandas as pd
 import ee
 from google.oauth2 import service_account
+import logging
+
+logging.basicConfig(level=logging.INFO)
 
 from dotenv import load_dotenv
 load_dotenv()  # before calling fetch_firms_area
@@ -38,7 +41,7 @@ def init_ee():
         ],
     )
     ee.Initialize(credentials, project="hackathon-demo-480416")
-    print("✅ Earth Engine initialized")
+    logging.info("✅ Earth Engine initialized")
 
 
 # ================================================================
@@ -182,7 +185,7 @@ if __name__ == "__main__":
         parameters=["T2M", "PRECTOT", "WS10M"],
         community="AG",
     )
-    print("NASA POWER sample:\n", df_power.head(), "\n")
+    logging.info("NASA POWER sample:\n%s\n", df_power.head())
 
     # ---- Earth Engine + CHIRPS example ----
     try:
@@ -194,18 +197,18 @@ if __name__ == "__main__":
             start="2022-01-01",
             end="2022-01-10",
         )
-        print("CHIRPS rainfall sample:\n", df_chirps.head(), "\n")
+        logging.info("CHIRPS rainfall sample:\n", df_chirps.head(), "\n")
     except Exception as e:
-        print("CHIRPS/EE failed:", e)
+        logging.info("CHIRPS/EE failed:", e)
 
     # ---- FIRMS example (bbox over Azerbaijan, last 3 days) ----
     # Make sure you have: export FIRMS_MAP_KEY="your_map_key_here"
     try:
         bbox_azerbaijan = (44.0, 38.5, 51.5, 42.0)
         df_fires = fetch_firms_area(bbox_azerbaijan, source="VIIRS_SNPP_NRT", day_range=3)
-        print("FIRMS fire events sample:\n", df_fires.head())
+        logging.info("FIRMS fire events sample:\n", df_fires.head())
     except Exception as e:
-        print("FIRMS fetch failed:", e)
+        logging.info("FIRMS fetch failed:", e)
 
 def build_hazard_features(
     lat: float,

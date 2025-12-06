@@ -11,6 +11,12 @@ from pydantic import BaseModel, Field
 
 from utils.fetch_hazard_data import init_ee, build_hazard_features
 
+import logging
+
+# Initialize logging
+
+logging.basicConfig(level=logging.INFO)
+
 app = FastAPI(
     title="Hazard Analytics API",
     description="EO-based hazard features for insurance / risk analytics",
@@ -35,7 +41,7 @@ async def startup_event():
         init_ee()
     except Exception as e:
         # Log and fail loudly; you can also set a flag instead.
-        print("Failed to initialize Earth Engine:", e)
+        logging.error("Failed to initialize Earth Engine: %s", e)
 
 
 # ---------- Pydantic models ----------

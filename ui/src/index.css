@@ -1,0 +1,167 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CrisisLens Design System */
+@layer base {
+  :root {
+    --background: 210 20% 98%;
+    --foreground: 220 20% 10%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 220 20% 10%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 20% 10%;
+
+    --primary: 220 70% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 210 15% 95%;
+    --secondary-foreground: 220 20% 20%;
+
+    --muted: 210 15% 93%;
+    --muted-foreground: 220 10% 45%;
+
+    --accent: 220 70% 95%;
+    --accent-foreground: 220 70% 40%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 220 70% 50%;
+
+    --radius: 0.75rem;
+
+    /* Hazard Colors */
+    --flood: 210 90% 55%;
+    --flood-light: 210 90% 95%;
+    --flood-foreground: 0 0% 100%;
+    
+    --fire: 20 90% 50%;
+    --fire-light: 20 90% 95%;
+    --fire-foreground: 0 0% 100%;
+    
+    --drought: 45 90% 50%;
+    --drought-light: 45 90% 95%;
+    --drought-foreground: 220 20% 10%;
+
+    /* Severity Colors */
+    --severity-none: 150 60% 45%;
+    --severity-low: 80 60% 45%;
+    --severity-moderate: 45 90% 50%;
+    --severity-high: 0 72% 51%;
+    --severity-watch: 45 90% 50%;
+    --severity-emerging: 30 90% 50%;
+    --severity-severe: 0 72% 51%;
+    --severity-unknown: 220 10% 50%;
+
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 220 20% 10%;
+    --sidebar-primary: 220 70% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 70% 95%;
+    --sidebar-accent-foreground: 220 70% 40%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 220 70% 50%;
+
+    --chart-1: 210 90% 55%;
+    --chart-2: 20 90% 50%;
+    --chart-3: 45 90% 50%;
+    --chart-4: 150 60% 45%;
+    --chart-5: 280 60% 50%;
+
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.05);
+    --shadow-md: 0 4px 6px -1px hsl(0 0% 0% / 0.1), 0 2px 4px -2px hsl(0 0% 0% / 0.1);
+    --shadow-lg: 0 10px 15px -3px hsl(0 0% 0% / 0.1), 0 4px 6px -4px hsl(0 0% 0% / 0.1);
+    --shadow-xl: 0 20px 25px -5px hsl(0 0% 0% / 0.1), 0 8px 10px -6px hsl(0 0% 0% / 0.1);
+  }
+
+  .dark {
+    --background: 220 20% 8%;
+    --foreground: 210 20% 98%;
+
+    --card: 220 20% 12%;
+    --card-foreground: 210 20% 98%;
+
+    --popover: 220 20% 12%;
+    --popover-foreground: 210 20% 98%;
+
+    --primary: 220 70% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 220 15% 20%;
+    --secondary-foreground: 210 20% 90%;
+
+    --muted: 220 15% 18%;
+    --muted-foreground: 220 10% 60%;
+
+    --accent: 220 70% 20%;
+    --accent-foreground: 220 70% 80%;
+
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 220 15% 20%;
+    --input: 220 15% 20%;
+    --ring: 220 70% 55%;
+
+    --flood: 210 80% 60%;
+    --flood-light: 210 50% 20%;
+    --fire: 20 80% 55%;
+    --fire-light: 20 50% 20%;
+    --drought: 45 80% 55%;
+    --drought-light: 45 50% 20%;
+
+    --sidebar-background: 220 20% 10%;
+    --sidebar-foreground: 210 20% 98%;
+    --sidebar-primary: 220 70% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 70% 20%;
+    --sidebar-accent-foreground: 220 70% 80%;
+    --sidebar-border: 220 15% 20%;
+    --sidebar-ring: 220 70% 55%;
+
+    --chart-1: 210 80% 60%;
+    --chart-2: 20 80% 55%;
+    --chart-3: 45 80% 55%;
+    --chart-4: 150 50% 50%;
+    --chart-5: 280 50% 55%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-family: 'Inter', sans-serif;
+  }
+}
+
+@layer utilities {
+  .hazard-flood {
+    @apply bg-[hsl(var(--flood))] text-[hsl(var(--flood-foreground))];
+  }
+  .hazard-fire {
+    @apply bg-[hsl(var(--fire))] text-[hsl(var(--fire-foreground))];
+  }
+  .hazard-drought {
+    @apply bg-[hsl(var(--drought))] text-[hsl(var(--drought-foreground))];
+  }
+  .hazard-flood-light {
+    @apply bg-[hsl(var(--flood-light))];
+  }
+  .hazard-fire-light {
+    @apply bg-[hsl(var(--fire-light))];
+  }
+  .hazard-drought-light {
+    @apply bg-[hsl(var(--drought-light))];
+  }
+}
