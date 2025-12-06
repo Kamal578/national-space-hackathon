@@ -1,6 +1,15 @@
-import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Globe2, Droplets, Flame, Sun, Shield, BarChart3, FileText } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { useNavigate } from "react-router-dom";
+import {
+  ArrowRight,
+  Globe2,
+  Droplets,
+  Flame,
+  Sun,
+  Shield,
+  BarChart3,
+  FileText,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const Landing = () => {
   const navigate = useNavigate();
@@ -13,7 +22,7 @@ const Landing = () => {
           <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center">
             <Globe2 className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="text-xl font-semibold">CrisisLens</span>
+          <span className="text-xl font-semibold">SPARKS.lab</span>
         </div>
       </header>
 
@@ -31,8 +40,9 @@ const Landing = () => {
           </h1>
 
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            CrisisLens combines satellite imagery and climate data to provide instant 
-            flood, fire, and drought assessments for any region on Earth.
+            SPARKS.lab combines satellite imagery and climate data to provide
+            instant flood, fire, and drought assessments for any region on
+            Earth.
           </p>
 
           {/* Feature Cards */}
@@ -43,7 +53,8 @@ const Landing = () => {
               </div>
               <h3 className="font-semibold text-lg mb-2">Flood Detection</h3>
               <p className="text-sm text-muted-foreground">
-                Sentinel-1 SAR analysis for real-time flood extent mapping and severity assessment.
+                Sentinel-1 SAR analysis for real-time flood extent mapping and
+                severity assessment.
               </p>
             </div>
 
@@ -53,7 +64,8 @@ const Landing = () => {
               </div>
               <h3 className="font-semibold text-lg mb-2">Fire Monitoring</h3>
               <p className="text-sm text-muted-foreground">
-                NASA FIRMS integration for active fire hotspot detection and cluster analysis.
+                NASA FIRMS integration for active fire hotspot detection and
+                cluster analysis.
               </p>
             </div>
 
@@ -63,7 +75,8 @@ const Landing = () => {
               </div>
               <h3 className="font-semibold text-lg mb-2">Drought Analysis</h3>
               <p className="text-sm text-muted-foreground">
-                NDVI anomaly and rainfall deficit tracking for early drought warning.
+                NDVI anomaly and rainfall deficit tracking for early drought
+                warning.
               </p>
             </div>
           </div>
@@ -86,7 +99,7 @@ const Landing = () => {
 
           {/* CTA Button */}
           <Button
-            onClick={() => navigate('/dashboard')}
+            onClick={() => navigate("/dashboard")}
             size="lg"
             className="rounded-2xl px-10 py-7 text-lg font-medium shadow-xl mt-8"
           >

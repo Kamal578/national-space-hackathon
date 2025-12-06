@@ -43,6 +43,7 @@ export function MapView({
     flood?: L.GeoJSON;
     fire?: L.GeoJSON;
     drought?: L.GeoJSON;
+    hazards?: L.LayerGroup;
   }>({});
 
   // Initialize map
@@ -198,6 +199,33 @@ export function MapView({
       layersRef.current.fire = fireLayer;
     }
 
+    // Add hazard markers at AOI centroid for quick visual identifiers
+    const hazardMarkers = L.layerGroup();
+    const center = aoiLayer.getBounds().getCenter();
+    const icon = (emoji: string, bg: string) =>
+      L.divIcon({
+        html: `<div style="display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:${bg};color:#fff;font-size:16px;">${emoji}</div>`,
+        className: 'hazard-marker'
+      });
+
+    if (showFlood) {
+      L.marker(center, { icon: icon('🌊', '#0ea5e9') })
+        .bindTooltip('Flood indicator', { direction: 'top' })
+        .addTo(hazardMarkers);
+    }
+    if (showFire) {
+      L.marker([center.lat + 0.05, center.lng], { icon: icon('🔥', '#f97316') })
+        .bindTooltip('Fire indicator', { direction: 'top' })
+        .addTo(hazardMarkers);
+    }
+    if (showDrought) {
+      L.marker([center.lat - 0.05, center.lng], { icon: icon('🌵', '#f59e0b') })
+        .bindTooltip('Drought indicator', { direction: 'top' })
+        .addTo(hazardMarkers);
+    }
+    hazardMarkers.addTo(map);
+    layersRef.current.hazards = hazardMarkers;
+
     // Fit bounds to AOI
     map.fitBounds(aoiLayer.getBounds(), { padding: [20, 20] });
 
@@ -221,16 +249,34 @@ export function MapView({
               <span className="text-xs text-muted-foreground">Flood Extent</span>
             </div>
           )}
+          {showFlood && (
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" style={{ background: '#0ea5e9', color: '#fff' }}>🌊</div>
+              <span className="text-xs text-muted-foreground">Flood marker</span>
+            </div>
+          )}
           {showFire && (
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 rounded-full bg-fire" />
               <span className="text-xs text-muted-foreground">Fire Hotspot</span>
             </div>
           )}
+          {showFire && (
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" style={{ background: '#f97316', color: '#fff' }}>🔥</div>
+              <span className="text-xs text-muted-foreground">Fire marker</span>
+            </div>
+          )}
           {showDrought && (
             <div className="flex items-center gap-2">
               <div className="w-4 h-3 rounded-sm bg-drought/50" />
               <span className="text-xs text-muted-foreground">Drought Stress</span>
+            </div>
+          )}
+          {showDrought && (
+            <div className="flex items-center gap-2">
+              <div className="w-5 h-5 rounded-full flex items-center justify-center text-[10px]" style={{ background: '#f59e0b', color: '#fff' }}>🌵</div>
+              <span className="text-xs text-muted-foreground">Drought marker</span>
             </div>
           )}
         </div>
