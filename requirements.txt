@@ -1,0 +1,7 @@
+fastapi
+uvicorn[standard]
+pandas
+requests
+earthengine-api
+google-auth
+python-dotenv
