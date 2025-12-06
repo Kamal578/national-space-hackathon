@@ -9,6 +9,30 @@ function formatDate(dateStr: string): string {
   });
 }
 
+const severityInterpretation = {
+  flood: {
+    none: 'No significant inundation expected.',
+    low: 'Minor, localized ponding possible.',
+    moderate: 'Noticeable flooding in low-lying areas.',
+    high: 'Widespread flooding likely.',
+    unknown: 'Flood conditions could not be assessed.'
+  },
+  fire: {
+    none: 'No active fire hotspots detected.',
+    low: 'Isolated hotspots; low spread risk.',
+    moderate: 'Multiple hotspots; elevated spread risk.',
+    high: 'High fire activity; rapid spread possible.',
+    unknown: 'Fire conditions could not be assessed.'
+  },
+  drought: {
+    none: 'Vegetation and rainfall near normal.',
+    watch: 'Early signs of dryness; monitor.',
+    emerging: 'Developing drought stress.',
+    severe: 'Severe moisture stress and vegetation loss.',
+    unknown: 'Drought conditions could not be assessed.'
+  }
+};
+
 export async function generatePDF(result: AnalysisResult): Promise<void> {
   const doc = new jsPDF();
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -65,20 +89,20 @@ export async function generatePDF(result: AnalysisResult): Promise<void> {
   const floodText = flood.severity === 'unknown' 
     ? 'flood data was unavailable'
     : flood.severity === 'none'
-    ? 'no significant flooding was detected'
-    : `${flood.severity} flood conditions were observed (${flood.floodedAreaKm2} km² inundated, approximately ${flood.floodedAreaPercentOfAOI}% of the analysis area)`;
+    ? `no significant flooding was detected (${severityInterpretation.flood.none})`
+    : `${flood.severity} flood conditions were observed (${severityInterpretation.flood[flood.severity]}, ${flood.floodedAreaKm2} km² inundated, approximately ${flood.floodedAreaPercentOfAOI}% of the analysis area)`;
 
   const fireText = fire.severity === 'unknown'
     ? 'fire data was unavailable'
     : fire.severity === 'none'
-    ? 'no active fire hotspots were detected'
-    : `${fire.severity} fire activity was recorded with ${fire.hotspotsCount} active hotspot(s)`;
+    ? `no active fire hotspots were detected (${severityInterpretation.fire.none})`
+    : `${fire.severity} fire activity was recorded with ${fire.hotspotsCount} active hotspot(s); ${severityInterpretation.fire[fire.severity]}`;
 
   const droughtText = drought.severity === 'unknown'
     ? 'drought data was unavailable'
     : drought.severity === 'none'
-    ? 'vegetation and rainfall conditions appear normal'
-    : `${drought.severity} drought conditions are present (NDVI anomaly: ${drought.ndviAnomaly}, rainfall deficit: ${drought.rainfallAnomalyMm} mm)`;
+    ? `vegetation and rainfall conditions appear normal (${severityInterpretation.drought.none})`
+    : `${drought.severity} drought conditions are present (${severityInterpretation.drought[drought.severity]}, NDVI anomaly: ${drought.ndviAnomaly}, rainfall deficit: ${drought.rainfallAnomalyMm} mm)`;
 
   const summaryText = `During the analysis period, ${result.aoiName} experienced the following conditions: ${floodText}; ${fireText}; and ${droughtText}.`;
   
@@ -110,6 +134,10 @@ export async function generatePDF(result: AnalysisResult): Promise<void> {
   doc.text('Flood', margin + 5, y);
   doc.text(flood.severity.toUpperCase(), margin + 50, y);
   doc.text(flood.floodedAreaKm2 !== null ? `${flood.floodedAreaKm2} km² (${flood.floodedAreaPercentOfAOI}% of AOI)` : 'N/A', margin + 90, y);
+  y += 5;
+  doc.setFontSize(8);
+  doc.text(`Interpretation: ${severityInterpretation.flood[flood.severity] || 'N/A'}`, margin + 90, y);
+  doc.setFontSize(9);
   
   y += 12;
 
@@ -119,6 +147,10 @@ export async function generatePDF(result: AnalysisResult): Promise<void> {
   doc.text('Fire', margin + 5, y);
   doc.text(fire.severity.toUpperCase(), margin + 50, y);
   doc.text(fire.hotspotsCount !== null ? `${fire.hotspotsCount} hotspots detected` : 'N/A', margin + 90, y);
+  y += 5;
+  doc.setFontSize(8);
+  doc.text(`Interpretation: ${severityInterpretation.fire[fire.severity] || 'N/A'}`, margin + 90, y);
+  doc.setFontSize(9);
   
   y += 12;
 
@@ -128,6 +160,10 @@ export async function generatePDF(result: AnalysisResult): Promise<void> {
   doc.text('Drought', margin + 5, y);
   doc.text(drought.severity.toUpperCase(), margin + 50, y);
   doc.text(drought.ndviAnomaly !== null ? `NDVI: ${drought.ndviAnomaly}, Rain: ${drought.rainfallAnomalyMm}mm` : 'N/A', margin + 90, y);
+  y += 5;
+  doc.setFontSize(8);
+  doc.text(`Interpretation: ${severityInterpretation.drought[drought.severity] || 'N/A'}`, margin + 90, y);
+  doc.setFontSize(9);
 
   y += 20;
 

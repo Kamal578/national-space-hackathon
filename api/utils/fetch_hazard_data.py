@@ -1,18 +1,17 @@
-from typing import Dict, Any
-import json
+from dotenv import load_dotenv
+from typing import Dict, Any, List, Optional, Tuple
 import os
 import io
-import json
 import datetime
 import requests
 import pandas as pd
 import ee
 from google.oauth2 import service_account
 import logging
+import json
 
 logging.basicConfig(level=logging.INFO)
 
-from dotenv import load_dotenv
 load_dotenv()  # before calling fetch_firms_area
 
 # ================================================================
@@ -21,36 +20,104 @@ load_dotenv()  # before calling fetch_firms_area
 
 SERVICE_ACCOUNT = "earthengine-sa@hackathon-demo-480416.iam.gserviceaccount.com"
 
+FEATURE_UNITS: Dict[str, Dict[str, str]] = {
+    "climate": {
+        "t2m_mean": "degC",
+        "t2m_max": "degC",
+        "precip_sum": "mm",
+        "wind_mean": "m/s",
+    },
+    "drought": {
+        "chirps_precip_sum": "mm",
+        "chirps_precip_mean": "mm/day",
+    },
+    "fire": {
+        "fires_count": "count",
+        "fires_mean_brightness": "Kelvin",
+        "fires_mean_frp": "MW",
+    },
+}
+
+SERVICE_ACCOUNT_PROJECT = "hackathon-demo-480416"
+
+
 def init_ee():
     """
-    Initialize Earth Engine using a service account JSON in ./keys.
-    Assumes there is exactly one .json file in the keys directory.
+    Initialize Earth Engine.
+
+    Priority:
+    1) If EE_JSON env var is set (Cloud Run), parse it as service account JSON.
+    2) Else, if EE_KEY_PATH env var is set, load JSON from that file.
+    3) Else, fall back to ./utils/keys or ./keys for local development.
     """
-    keys_dir = os.path.join(os.path.dirname(__file__), "keys")
-    key_files = [f for f in os.listdir(keys_dir) if f.endswith(".json")]
-    if not key_files:
-        raise RuntimeError("No .json key file found in ./keys")
+    # 1) Cloud Run: EE_JSON secret as env var
+    ee_json = os.environ.get("EE_JSON")
+    if ee_json:
+        print("Using EE_JSON from environment to initialize Earth Engine")
+        info = json.loads(ee_json)
+        credentials = service_account.Credentials.from_service_account_info(
+            info,
+            scopes=[
+                "https://www.googleapis.com/auth/earthengine",
+                "https://www.googleapis.com/auth/cloud-platform",
+            ],
+        )
+        ee.Initialize(credentials, project=SERVICE_ACCOUNT_PROJECT)
+        print("✅ Earth Engine initialized from EE_JSON env")
+        return
 
-    key_path = os.path.join(keys_dir, key_files[0])
+    # 2) Cloud Run or local: EE_KEY_PATH file path
+    key_path = os.environ.get("EE_KEY_PATH")
+    if key_path:
+        print(f"Using EE_KEY_PATH file to initialize Earth Engine: {key_path}")
+        credentials = service_account.Credentials.from_service_account_file(
+            key_path,
+            scopes=[
+                "https://www.googleapis.com/auth/earthengine",
+                "https://www.googleapis.com/auth/cloud-platform",
+            ],
+        )
+        ee.Initialize(credentials, project=SERVICE_ACCOUNT_PROJECT)
+        print("✅ Earth Engine initialized from EE_KEY_PATH")
+        return
 
-    credentials = service_account.Credentials.from_service_account_file(
-        key_path,
-        scopes=[
-            "https://www.googleapis.com/auth/earthengine",
-            "https://www.googleapis.com/auth/cloud-platform",
-        ],
-    )
-    ee.Initialize(credentials, project="hackathon-demo-480416")
-    logging.info("✅ Earth Engine initialized")
+    # 3) Local dev fallbacks: ./utils/keys or ./keys
+    print("EE_JSON and EE_KEY_PATH not set, trying local keys directory")
+    base_dir = os.path.dirname(__file__)
+    candidate_dirs = [
+        os.path.join(base_dir, "utils", "keys"),
+        os.path.join(base_dir, "keys"),
+    ]
 
+    for d in candidate_dirs:
+        if os.path.isdir(d):
+            key_files = [f for f in os.listdir(d) if f.endswith(".json")]
+            if key_files:
+                key_path = os.path.join(d, key_files[0])
+                print(f"Found local key file: {key_path}")
+                credentials = service_account.Credentials.from_service_account_file(
+                    key_path,
+                    scopes=[
+                        "https://www.googleapis.com/auth/earthengine",
+                        "https://www.googleapis.com/auth/cloud-platform",
+                    ],
+                )
+                ee.Initialize(credentials, project=SERVICE_ACCOUNT_PROJECT)
+                print("✅ Earth Engine initialized from local file")
+                return
+
+    raise RuntimeError(
+        "Could not find Earth Engine credentials (EE_JSON, EE_KEY_PATH, or local key file).")
 
 # ================================================================
 # 1. NASA POWER – climate / met data for a point
 # ================================================================
 
+
 def fetch_nasa_power(lat, lon, start_date, end_date, parameters=None, community="AG"):
     if parameters is None:
-        parameters = ["T2M", "PRECTOT", "WS10M"]  # request PRECTOT, may get PRECTOTCORR
+        # request PRECTOT, may get PRECTOTCORR
+        parameters = ["T2M", "PRECTOT", "WS10M"]
 
     base_url = "https://power.larc.nasa.gov/api/temporal/daily/point"
     params = {
@@ -88,6 +155,7 @@ def fetch_nasa_power(lat, lon, start_date, end_date, parameters=None, community=
 # 2. CHIRPS via Earth Engine – rainfall for a point
 # ================================================================
 
+
 def fetch_chirps_rainfall(lat, lon, start, end):
     """
     Fetch daily precipitation (mm/day) for a point using CHIRPS via Earth Engine.
@@ -103,13 +171,19 @@ def fetch_chirps_rainfall(lat, lon, start, end):
     )
 
     # Convert each image to (date, precip) and pull to client.
-    imgs_list = collection.toList(collection.size())
-    n = imgs_list.size().getInfo()
+    size = collection.size().getInfo()
+    if size is None or size <= 0:
+        # No imagery in this date range; return empty frame
+        return pd.DataFrame(columns=["precip_mm"])
+
+    imgs_list = collection.toList(size)
+    n = size
 
     records = []
     for i in range(n):
         img = ee.Image(imgs_list.get(i))
-        date_str = ee.Date(img.get("system:time_start")).format("YYYY-MM-dd").getInfo()
+        date_str = ee.Date(img.get("system:time_start")
+                           ).format("YYYY-MM-dd").getInfo()
         # sample() with default scale ~5km; fine for CHIRPS
         val = img.sample(pt).first().get("precipitation").getInfo()
         records.append((date_str, val))
@@ -121,6 +195,24 @@ def fetch_chirps_rainfall(lat, lon, start, end):
     df["date"] = pd.to_datetime(df["date"])
     df = df.set_index("date").sort_index()
     return df
+
+
+def _safe_sum(series) -> float:
+    if series is None or len(series) == 0:
+        return 0.0
+    val = float(series.sum())
+    if pd.isna(val):
+        return 0.0
+    return val
+
+
+def _safe_mean(series) -> float:
+    if series is None or len(series) == 0:
+        return 0.0
+    val = float(series.mean())
+    if pd.isna(val):
+        return 0.0
+    return val
 
 
 # ================================================================
@@ -190,7 +282,7 @@ if __name__ == "__main__":
     # ---- Earth Engine + CHIRPS example ----
     try:
         init_ee()
-        
+
         df_chirps = fetch_chirps_rainfall(
             lat=40.4093,
             lon=49.8671,
@@ -205,68 +297,12 @@ if __name__ == "__main__":
     # Make sure you have: export FIRMS_MAP_KEY="your_map_key_here"
     try:
         bbox_azerbaijan = (44.0, 38.5, 51.5, 42.0)
-        df_fires = fetch_firms_area(bbox_azerbaijan, source="VIIRS_SNPP_NRT", day_range=3)
+        df_fires = fetch_firms_area(
+            bbox_azerbaijan, source="VIIRS_SNPP_NRT", day_range=3)
         logging.info("FIRMS fire events sample:\n", df_fires.head())
     except Exception as e:
         logging.info("FIRMS fetch failed:", e)
 
-def build_hazard_features(
-    lat: float,
-    lon: float,
-    start: str,
-    end: str,
-    bbox=None,
-    firms_days: int = 7,
-) -> Dict[str, Any]:
-    """
-    Build a simple hazard feature dict for one location (and optional bbox for fires).
-
-    start/end  : 'YYYY-MM-DD'
-    firms_days : how many days back to look for fires
-    """
-    # ---- NASA POWER (climate) ----
-    # convert dates to YYYYMMDD
-    start_power = start.replace("-", "")
-    end_power = end.replace("-", "")
-    df_power = fetch_nasa_power(
-        lat=lat,
-        lon=lon,
-        start_date=start_power,
-        end_date=end_power,
-        parameters=["T2M", "PRECTOT", "WS10M"],
-        community="AG",
-    )
-
-    # simple climate summaries
-    climate = {
-        "t2m_mean": float(df_power["T2M"].mean()),
-        "t2m_max": float(df_power["T2M"].max()),
-        "precip_sum": float(df_power["PRECTOT"].sum()),
-        "wind_mean": float(df_power["WS10M"].mean()),
-    }
-
-    # ---- CHIRPS (rainfall) ----
-    df_chirps = fetch_chirps_rainfall(lat, lon, start, end)
-    drought = {
-        "chirps_precip_sum": float(df_chirps["precip_mm"].sum()),
-        "chirps_precip_mean": float(df_chirps["precip_mm"].mean()),
-    }
-
-    # ---- FIRMS (fires) ----
-    fire_stats = {}
-    if bbox is not None:
-        df_fires = fetch_firms_area(bbox, source="VIIRS_SNPP_NRT", day_range=firms_days)
-        fire_stats = {
-            "fires_count": int(len(df_fires)),
-            "fires_mean_brightness": float(df_fires["bright_ti4"].mean()) if len(df_fires) else 0.0,
-            "fires_mean_frp": float(df_fires["frp"].mean()) if len(df_fires) else 0.0,
-        }
-
-    return {
-        "climate": climate,
-        "drought": drought,
-        "fire": fire_stats,
-    }
 
 def build_hazard_features(
     lat: float,
@@ -295,25 +331,26 @@ def build_hazard_features(
         community="AG",
     )
 
-    # simple climate summaries
+    # simple climate summaries with safe handling of empty frames
     climate = {
-        "t2m_mean": float(df_power["T2M"].mean()),
-        "t2m_max": float(df_power["T2M"].max()),
-        "precip_sum": float(df_power["PRECTOT"].sum()),
-        "wind_mean": float(df_power["WS10M"].mean()),
+        "t2m_mean": _safe_mean(df_power["T2M"]) if "T2M" in df_power else 0.0,
+        "t2m_max": float(df_power["T2M"].max()) if "T2M" in df_power and not df_power["T2M"].empty else 0.0,
+        "precip_sum": _safe_sum(df_power["PRECTOT"]) if "PRECTOT" in df_power else 0.0,
+        "wind_mean": _safe_mean(df_power["WS10M"]) if "WS10M" in df_power else 0.0,
     }
 
     # ---- CHIRPS (rainfall) ----
     df_chirps = fetch_chirps_rainfall(lat, lon, start, end)
     drought = {
-        "chirps_precip_sum": float(df_chirps["precip_mm"].sum()),
-        "chirps_precip_mean": float(df_chirps["precip_mm"].mean()),
+        "chirps_precip_sum": _safe_sum(df_chirps["precip_mm"]) if "precip_mm" in df_chirps else 0.0,
+        "chirps_precip_mean": _safe_mean(df_chirps["precip_mm"]) if "precip_mm" in df_chirps else 0.0,
     }
 
     # ---- FIRMS (fires) ----
     fire_stats = {}
     if bbox is not None:
-        df_fires = fetch_firms_area(bbox, source="VIIRS_SNPP_NRT", day_range=firms_days)
+        df_fires = fetch_firms_area(
+            bbox, source="VIIRS_SNPP_NRT", day_range=firms_days)
         fire_stats = {
             "fires_count": int(len(df_fires)),
             "fires_mean_brightness": float(df_fires["bright_ti4"].mean()) if len(df_fires) else 0.0,
@@ -325,3 +362,19 @@ def build_hazard_features(
         "drought": drought,
         "fire": fire_stats,
     }
+
+
+def dataframe_to_timeseries(df: pd.DataFrame, value_columns: List[str]) -> List[Dict[str, Any]]:
+    """
+    Convert a pandas DataFrame with datetime index into a list of dicts
+    with ISO dates and specified columns.
+    """
+    if df.empty:
+        return []
+    records: List[Dict[str, Any]] = []
+    for idx, row in df.iterrows():
+        entry: Dict[str, Any] = {"date": idx.strftime("%Y-%m-%d")}
+        for col in value_columns:
+            entry[col] = row[col] if col in row else None
+        records.append(entry)
+    return records

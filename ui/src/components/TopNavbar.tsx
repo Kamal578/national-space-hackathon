@@ -42,7 +42,8 @@ export function TopNavbar({ showBackButton, onGoBack, showNewAnalysis, onNewAnal
             New Analysis
           </Button>
         )}
-        
+
+        {/* add max z-index to DialogContent to ensure it appears above other elements */}
         <Dialog>
           <DialogTrigger asChild>
             <Button variant="ghost" size="sm" className="gap-2">

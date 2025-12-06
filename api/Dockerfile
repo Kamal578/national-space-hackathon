@@ -1,21 +1,20 @@
 FROM python:3.12-slim
 
-# Install system deps (if you need GDAL/GEOS later, you'd add them here)
+# Install any system deps if needed
 RUN apt-get update && apt-get install -y \
     build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install Python dependencies
+# Install Python deps
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy app code
+# Copy your code into the image
 COPY . .
 
-# FastAPI on Cloud Run must listen on $PORT, default 8080
+# Cloud Run expects the app to listen on $PORT (defaults to 8080)
 ENV PORT=8080
 
-# For safety, don't hardcode secrets here – use env/Secrets
 CMD ["uvicorn", "api_main:app", "--host", "0.0.0.0", "--port", "8080"]

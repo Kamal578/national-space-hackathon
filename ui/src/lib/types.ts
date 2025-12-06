@@ -48,6 +48,13 @@ export interface AnalysisSummary {
   drought: DroughtSummary;
 }
 
+export interface HazardUnits {
+  climate?: Record<string, string>;
+  drought?: Record<string, string>;
+  fire?: Record<string, string>;
+  raw?: Record<string, string>;
+}
+
 export interface GeoJsonLayers {
   aoi: Feature<Polygon>;
   floodExtent?: FeatureCollection<Polygon>;
@@ -101,6 +108,7 @@ export interface AnalysisResult {
   timeRange: TimeRange;
   aoiName?: string;
   history?: HistoryData;
+  units?: HazardUnits;
 }
 
 export interface AnalysisRequest {
@@ -109,6 +117,7 @@ export interface AnalysisRequest {
   historyConfig: HistoryConfig;
   hazards: HazardSelection;
   aoiName?: string;
+  customPeriod?: TimeRange;
 }
 
 export interface SampleAOI {
@@ -118,4 +127,7 @@ export interface SampleAOI {
   feature: Feature<Polygon>;
   center: [number, number];
   zoom: number;
+  bbox?: [number, number, number, number];
+  areaKm2?: number;
+  isCustom?: boolean;
 }

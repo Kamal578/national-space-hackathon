@@ -14,7 +14,7 @@ import { sampleAOIs } from '@/data/sampleAOI';
 import { sampleFloodExtent, californiaFloodExtent, kenyaFloodExtent } from '@/data/sampleFlood';
 import { californiaFirePoints, bangladeshFirePoints, kenyaFirePoints } from '@/data/sampleFire';
 import { kenyaDroughtGrid, bangladeshDroughtGrid, californiaDroughtGrid } from '@/data/sampleDrought';
-import { fetchHazardFeaturesFromApi } from './liveDataService';
+import { DEFAULT_UNITS, fetchHazardFeaturesFromApi } from './liveDataService';
 import { generateHistoryData, getDefaultTimeRangeFromHistory } from './historyGenerator';
 
 function generateId(): string {
@@ -227,7 +227,7 @@ function analyzeDrought(
 }
 
 export async function runAnalysis(request: AnalysisRequest): Promise<AnalysisResult> {
-  const { aoi, mode, historyConfig, hazards, aoiName } = request;
+  const { aoi, mode, historyConfig, hazards, aoiName, customPeriod } = request;
 
   const regionId = findMatchingRegion(aoi);
   
@@ -235,7 +235,7 @@ export async function runAnalysis(request: AnalysisRequest): Promise<AnalysisRes
   const history = generateHistoryData(historyConfig, hazards, regionId);
   
   // Get the default time range (latest period)
-  const timeRange = getDefaultTimeRangeFromHistory(history);
+  const timeRange = customPeriod || getDefaultTimeRangeFromHistory(history);
   
   // Default to sample data for demo and as fallback
   let floodData: FeatureCollection<Polygon> = getFloodDataForRegion(regionId);
@@ -244,6 +244,7 @@ export async function runAnalysis(request: AnalysisRequest): Promise<AnalysisRes
   let floodSource = 'Sample Data';
   let fireSource = 'Sample Data';
   let droughtSource = 'Sample Data';
+  let units = DEFAULT_UNITS;
 
   let floodSummary: FloodSummary = {
     severity: 'unknown',
@@ -270,6 +271,7 @@ export async function runAnalysis(request: AnalysisRequest): Promise<AnalysisRes
 
     if (apiResult.success && apiResult.data?.features) {
       const { features } = apiResult.data;
+      units = apiResult.data.units || DEFAULT_UNITS;
 
       if (hazards.fire) {
         const count = features.fire?.fires_count ?? 0;
@@ -352,6 +354,7 @@ export async function runAnalysis(request: AnalysisRequest): Promise<AnalysisRes
     mode,
     timeRange,
     aoiName: aoiName || 'Custom Area',
-    history
+    history,
+    units
   };
 }

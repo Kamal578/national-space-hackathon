@@ -11,7 +11,7 @@ import { TimeSeriesCharts } from '@/components/TimeSeriesCharts';
 import { useToast } from '@/hooks/use-toast';
 import { runAnalysis } from '@/lib/analysis';
 import { getSummaryForPeriod, getPeriodScaleFactor } from '@/lib/periodFilter';
-import type { SampleAOI, AnalysisMode, HazardSelection, HistoryConfig, TimeRange, AnalysisResult, AnalysisSummary } from '@/lib/types';
+import type { SampleAOI, AnalysisMode, HazardSelection, HistoryConfig, TimeRange, AnalysisResult, AnalysisSummary, HazardUnits } from '@/lib/types';
 
 type ViewState = 'config' | 'loading' | 'results';
 
@@ -27,6 +27,15 @@ const Index = () => {
     fire: true,
     drought: true
   });
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const defaultStart = useMemo(() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 30);
+    return d.toISOString().split('T')[0];
+  }, []);
+  const [startDate, setStartDate] = useState<string>(defaultStart);
+  const [endDate, setEndDate] = useState<string>(todayStr);
+  const [dateError, setDateError] = useState<string | null>(null);
   const [historyConfig, setHistoryConfig] = useState<HistoryConfig>({
     yearsBack: 3,
     aggregation: 'monthly'
@@ -46,6 +55,24 @@ const Index = () => {
       return;
     }
 
+    // Validate dates
+    const today = new Date();
+    const start = startDate ? new Date(startDate) : null;
+    const end = endDate ? new Date(endDate) : null;
+    if (!start || !end) {
+      setDateError('Please select both start and end dates.');
+      return;
+    }
+    if (start > today || end > today) {
+      setDateError('Future dates are not allowed.');
+      return;
+    }
+    if (end < start) {
+      setDateError('End date cannot be before start date.');
+      return;
+    }
+    setDateError(null);
+
     setViewState('loading');
     
     try {
@@ -54,7 +81,8 @@ const Index = () => {
         mode,
         historyConfig,
         hazards,
-        aoiName: selectedAOI.name
+        aoiName: selectedAOI.name,
+        customPeriod: { start: startDate, end: endDate }
       });
 
       setPendingResult(analysisResult);
@@ -127,6 +155,12 @@ const Index = () => {
   const mapZoom = selectedAOI?.zoom || 2;
 
   const displayTimeRange = selectedPeriod || result?.timeRange;
+
+  const units: HazardUnits | undefined = result?.units;
+  const getUnit = (group: keyof HazardUnits, key: string) =>
+    (units && units[group]?.[key]) || undefined;
+  const fmt = (value: number | null | undefined, digits = 2) =>
+    value === null || value === undefined ? null : Number(value.toFixed(digits));
 
   return (
     <div className="min-h-screen flex flex-col bg-background">
@@ -201,8 +235,8 @@ const Index = () => {
                     type="flood"
                     severity={periodSummary.flood.severity}
                     metrics={[
-                      { label: 'Area Flooded', value: periodSummary.flood.floodedAreaKm2 ? `${periodSummary.flood.floodedAreaKm2} km²` : null },
-                      { label: '% of AOI', value: periodSummary.flood.floodedAreaPercentOfAOI ? `${periodSummary.flood.floodedAreaPercentOfAOI}%` : null }
+                      { label: 'Area Flooded', value: fmt(periodSummary.flood.floodedAreaKm2), unit: 'km²' },
+                      { label: '% of AOI', value: fmt(periodSummary.flood.floodedAreaPercentOfAOI), unit: '%' }
                     ]}
                     note={periodSummary.flood.note}
                   />
@@ -213,8 +247,8 @@ const Index = () => {
                     type="fire"
                     severity={periodSummary.fire.severity}
                     metrics={[
-                      { label: 'Active Hotspots', value: periodSummary.fire.hotspotsCount },
-                      { label: 'Clusters', value: periodSummary.fire.clusters || 0 }
+                      { label: 'Active Hotspots', value: periodSummary.fire.hotspotsCount, unit: getUnit('fire', 'fires_count') || 'count', tooltip: 'Satellite-detected fire pixels in the AOI.' },
+                      { label: 'Clusters', value: periodSummary.fire.clusters || 0, unit: 'clusters' }
                     ]}
                     note={periodSummary.fire.note}
                   />
@@ -225,8 +259,8 @@ const Index = () => {
                     type="drought"
                     severity={periodSummary.drought.severity}
                     metrics={[
-                      { label: 'NDVI Anomaly', value: periodSummary.drought.ndviAnomaly },
-                      { label: 'Rainfall Deficit', value: periodSummary.drought.rainfallAnomalyMm ? `${periodSummary.drought.rainfallAnomalyMm} mm` : null }
+                      { label: 'NDVI Anomaly', value: periodSummary.drought.ndviAnomaly, unit: 'index', tooltip: 'NDVI is a greenness index; anomaly compares to normal vegetation health.' },
+                      { label: 'Rainfall Deficit', value: fmt(periodSummary.drought.rainfallAnomalyMm, 1), unit: getUnit('drought', 'chirps_precip_sum') || 'mm', tooltip: 'Shortfall of rainfall relative to normal for this period.' }
                     ]}
                     note={periodSummary.drought.note}
                   />
@@ -254,6 +288,14 @@ const Index = () => {
               onHazardsChange={setHazards}
               historyConfig={historyConfig}
               onHistoryConfigChange={setHistoryConfig}
+              startDate={startDate}
+              endDate={endDate}
+              onDateChange={({ start, end }) => {
+                setStartDate(start);
+                setEndDate(end);
+                setDateError(null);
+              }}
+              dateError={dateError}
               onRunAnalysis={handleRunAnalysis}
               isLoading={false}
             />
