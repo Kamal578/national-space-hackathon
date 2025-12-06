@@ -1,6 +1,6 @@
 from typing import Dict, Any
 import json
-from utils.fetch_satellite_data import init_ee, fetch_chirps_rainfall, fetch_firms_area, fetch_nasa_power, build_hazard_features
+from utils.fetch_satellite_data import init_ee, build_hazard_features
 
 # Example usage
 if __name__ == "__main__":
