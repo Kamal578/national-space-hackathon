@@ -1,4 +1,4 @@
-# Hazard Analytics Platform
+# SPARKS.lab - Hazard Analytics Platform
 
 End-to-end prototype for multi-hazard analytics combining a FastAPI backend with a React (Vite + TypeScript) frontend. The system ingests Earth observation and open data sources to produce quick flood, fire, and drought snapshots for a user-defined area of interest (AOI).
 

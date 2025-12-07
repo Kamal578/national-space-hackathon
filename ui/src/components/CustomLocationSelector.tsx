@@ -115,30 +115,20 @@ export function CustomLocationSelector({ onSelect }: CustomLocationSelectorProps
       attribution: '&copy; OpenStreetMap contributors'
     }).addTo(map);
 
-    map.on('mousedown', (e) => {
+    map.on('click', (e) => {
       if (!isSelectingRef.current) return;
-      startDragRef.current = e.latlng;
-      map.dragging.disable();
-    });
-
-    map.on('mousemove', (e) => {
-      if (!isSelectingRef.current || !startDragRef.current) return;
-      const start = startDragRef.current;
-      const west = Math.min(start.lng, e.latlng.lng);
-      const east = Math.max(start.lng, e.latlng.lng);
-      const south = Math.min(start.lat, e.latlng.lat);
-      const north = Math.max(start.lat, e.latlng.lat);
-      const bbox: Bbox = [west, south, east, north];
-      drawRectangle(bbox, map);
-    });
-
-    map.on('mouseup', (e) => {
-      if (!isSelectingRef.current || !startDragRef.current) return;
-      const start = startDragRef.current;
-      const west = Math.min(start.lng, e.latlng.lng);
-      const east = Math.max(start.lng, e.latlng.lng);
-      const south = Math.min(start.lat, e.latlng.lat);
-      const north = Math.max(start.lat, e.latlng.lat);
+      // First tap
+      if (!startDragRef.current) {
+        startDragRef.current = e.latlng;
+        return;
+      }
+      // Second tap -> finalize bbox
+      const first = startDragRef.current;
+      const second = e.latlng;
+      const west = Math.min(first.lng, second.lng);
+      const east = Math.max(first.lng, second.lng);
+      const south = Math.min(first.lat, second.lat);
+      const north = Math.max(first.lat, second.lat);
       const bbox: Bbox = [west, south, east, north];
       applyBbox(bbox, map);
       setIsSelecting(false);
@@ -236,8 +226,8 @@ export function CustomLocationSelector({ onSelect }: CustomLocationSelectorProps
           <div ref={mapRef} className="absolute inset-0" />
           <div className="absolute top-2 left-2 bg-card/90 backdrop-blur-sm rounded-lg px-3 py-2 text-xs shadow-sm max-w-xs">
             {isSelecting
-              ? 'Click and drag to draw a rectangle. Release to finish, then confirm.'
-              : 'Pan/zoom freely. Click "Select Area" to draw a rectangle.'}
+              ? 'Tap two opposite corners to define your area, then confirm.'
+              : 'Pan/zoom freely. Tap "Select Area" to start, then tap two corners.'}
           </div>
         </div>
       </div>
